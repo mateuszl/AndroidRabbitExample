@@ -44,6 +44,9 @@ public class MainActivity extends Activity {
         publishToAMQP();
         setupPubButton();
 
+
+
+        /*
         final Handler incomingMessageHandler = new Handler() {
             @Override
             public void handleMessage(Message msg) {
@@ -55,6 +58,12 @@ public class MainActivity extends Activity {
             }
         };
         subscribe(incomingMessageHandler);
+        */
+
+        subscribe2();
+
+
+
         // ATTENTION: This was auto-generated to implement the App Indexing API.
         // See https://g.co/AppIndexing/AndroidStudio for more information.
         client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
@@ -99,16 +108,42 @@ public class MainActivity extends Activity {
 
     private void setupConnectionFactory() {
         String uri = "81.2.245.218";
-//        int port = 5672;
         try {
             factory.setAutomaticRecoveryEnabled(false);
             factory.setHost(uri);
             factory.setUsername("android");
             factory.setPassword("Serwer1");
-//            factory.setPort(port);
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    void subscribe2() {
+        subscribeThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (true) {
+                    try {
+                        Connection connection = factory.newConnection();
+                        Channel channel = connection.createChannel();
+                        //channel.basicQos(1);
+                        AMQP.Queue.DeclareOk q = channel.queueDeclare();
+                        channel.queueBind(q.getQueue(), "amq.fanout", "chat");
+                        AMQPConsumer consumer = new AMQPConsumer(channel);
+                        channel.basicConsume(q.getQueue(), true, consumer);
+
+                    } catch (Exception e1) {
+                        Log.d("", "Connection broken: " + e1.getClass().getName());
+                        try {
+                            Thread.sleep(4000); //sleep and then try again
+                        } catch (InterruptedException e) {
+                            break;
+                        }
+                    }
+                }
+            }
+        });
+        subscribeThread.start();
     }
 
     void subscribe(final Handler handler) {
